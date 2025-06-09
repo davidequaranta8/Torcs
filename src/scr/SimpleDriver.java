@@ -69,7 +69,11 @@ public class SimpleDriver extends Controller {
 
         if (!guidaAutonoma) {//se mi trovo nella fase di addestramento creo il file che rappresenta il dataset
             file = new File("dataset.csv");
-            
+            try (BufferedWriter bw = new BufferedWriter(new FileWriter(file))) {
+                bw.write("Speed;DistanzaLineaCentrale;SensoreSX1;SensoreSX2;SensoreCentrale;SensoreDX1;SensoreDX2;Angolo;Classe\n");
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
 			ContinuousCharReaderUI.main(null);//lancio la UI
 
         } else {//se sono nella fase di esecuzione istanzio il classificatore passandogli il dataset
@@ -225,7 +229,6 @@ public class SimpleDriver extends Controller {
 
           /*  if (lettura) {*/
                 try (BufferedWriter bw = new BufferedWriter(new FileWriter(file, true))) {
-					bw.write("Speed;DistanzaLineaCentrale;SensoreSX1;SensoreSX2;SensoreCentrale;SensoreDX1;SensoreDX2;Angolo;Classe\n");//scrivo la prima riga del file
                     for (double f : features) bw.append(f + ";");
                     bw.append(classe + "\n");
                 } catch (IOException e) {
