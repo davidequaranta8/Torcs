@@ -3,6 +3,7 @@
  */
 package scr;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.StringTokenizer;
 import scr.Controller.Stage;
 
@@ -189,14 +190,16 @@ public class Client {
 	private static Controller load(String name) {
 		Controller controller = null;
 		try {
-			controller = (Controller) (Object) Class.forName(name).newInstance();//???????????????
+			controller = (Controller) (Object) Class.forName(name)
+			.getConstructor(boolean.class)
+			.newInstance(guidaAutonoma);
 		} catch (ClassNotFoundException e) {
 			System.out.println(name + " is not a class name");
 			System.exit(0);
 		} catch (InstantiationException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-		} catch (IllegalAccessException e) {
+		} catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
