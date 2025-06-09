@@ -1,5 +1,11 @@
 package scr;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+
+
 public class SimpleDriver extends Controller {
 
 	/* Costanti di cambio marcia */
@@ -39,10 +45,54 @@ public class SimpleDriver extends Controller {
 
 
 
-	private int stuck = 0;
+	//private int stuck = 0;
 
 	// current clutch
-	private float clutch = 0;
+	//private float clutch = 0;
+
+	/*AGGIUNTE*/
+	private Action action;
+    private static char ch = ' ';
+    //private static boolean lettura = false;
+    private double[] features = new double[8];
+    private double angolo;
+    private int classe = -1;
+    private File file;
+    private NearestNeighbor nn;
+    private boolean guidaAutonoma;
+
+
+
+	public SimpleDriver(boolean guidaAutonoma) {
+        this.action = new Action();//VEDI SE ELIMINARE????????????????????
+        this.guidaAutonoma = guidaAutonoma;//inizializzo guidaAutonoma
+
+        if (!guidaAutonoma) {//se mi trovo nella fase di addestramento creo il file che rappresenta il dataset
+            file = new File("dataset.csv");
+            
+			ContinuousCharReaderUI.main(null);//lancio la UI
+
+        } else {//se sono nella fase di esecuzione istanzio il classificatore passandogli il dataset
+            nn = new NearestNeighbor("dataset.csv");
+        }
+    }
+
+	public static char getCh() {
+        return ch;
+    }
+
+    public static void setCh(char chParam) {
+        ch = chParam;
+    }
+/* 
+    public static boolean isLettura() {
+        return lettura;
+    }
+
+    public static void setLettura(boolean letturaParam) {
+        lettura = letturaParam;
+    }
+*/
 
 	public void reset() {
 		System.out.println("Restarting the race!");
@@ -52,6 +102,11 @@ public class SimpleDriver extends Controller {
 	public void shutdown() {
 		System.out.println("Bye bye!");
 	}
+
+	//metodo per normalizzare
+	private double normalize(double value, double min, double max) {
+        return (value - min) / (max - min);
+    }
 
 	private int getGear(SensorModel sensors) {
 		int gear = sensors.getGear();
@@ -139,94 +194,110 @@ public class SimpleDriver extends Controller {
 	}
 
 	public Action control(SensorModel sensors) {
-		// Controlla se l'auto è attualmente bloccata
-		/**
-			Se l'auto ha un angolo, rispetto alla traccia, superiore a 30°
-			incrementa "stuck" che è una variabile che indica per quanti cicli l'auto è in
-			condizione di difficoltà.
-			Quando l'angolo si riduce, "stuck" viene riportata a 0 per indicare che l'auto è
-			uscita dalla situaizone di difficoltà
-		 **/
-		if (Math.abs(sensors.getAngleToTrackAxis()) > stuckAngle) {
-			// update stuck counter
-			stuck++;
-		} else {
-			// if not stuck reset stuck counter
-			stuck = 0;
-		}
+		/*normalizzo gli input*/
+		features[0] = normalize(sensors.getSpeed(), 0.0, 250);
+        features[1] = normalize(sensors.getTrackPosition(), -2.0, 2.0);
+        features[2] = normalize(sensors.getTrackEdgeSensors()[3], -1.0, 200);
+        features[3] = normalize(sensors.getTrackEdgeSensors()[6], -1.0, 200);
+        features[4] = normalize(sensors.getTrackEdgeSensors()[9], -1.0, 200);
+        features[5] = normalize(sensors.getTrackEdgeSensors()[12], -1.0, 200);
+        features[6] = normalize(sensors.getTrackEdgeSensors()[15], -1.0, 200);
+        features[7] = normalize(sensors.getAngleToTrackAxis(), -Math.PI, Math.PI);
 
-		// Applicare la polizza di recupero o meno in base al tempo trascorso
-		/**
-		Se "stuck" è superiore a 25 (stuckTime) allora procedi a entrare in situaizone di RECOVERY
-		per far fronte alla situazione di difficoltà
-		 **/
+		angolo = sensors.getAngleToTrackAxis();
 
-		if (stuck > stuckTime) { //Auto Bloccata
-			/**
-			 * Impostare la marcia e il comando di sterzata supponendo che l'auto stia puntando
-			 * in una direzione al di fuori di pista
-			 **/
 
-			// Per portare la macchina parallela all'asse TrackPos
-			float steer = (float) (-sensors.getAngleToTrackAxis() / steerLock);
-			int gear = -1; // Retromarcia
+		if (guidaAutonoma) {
+            classe = nn.classify(new Sample(features));
+        } else {
+            switch (ch) {
+                case 'w': classe = 0; break;
+                case 'a': classe = (features[4] < 0.2 && features[0] > 0.5) ? 1 : (features[4] < 0.5 ? 2 : 3); break;
+                case 'd': classe = (features[4] < 0.2 && features[0] > 0.5) ? 4 : (features[4] < 0.5 ? 5 : 6); break;
+                case 's': classe = 7; break;
+                case 'r': classe = 8; break;
+                case 'q': classe = 11; break; // Avanti + destra
+                case 'e': classe = 10; break; // Avanti + sinistra
+                case 'z': classe = 12; break; // retromarcia + sinistra
+                case 'x': classe = 13; break; // retromarcia + destra
+                default: classe = 9; break;
+            }
 
-			// Se l'auto è orientata nella direzione corretta invertire la marcia e sterzare
-			if (sensors.getAngleToTrackAxis() * sensors.getTrackPosition() > 0) {
-				gear = 1;
-				steer = -steer;
-			}
-			clutch = clutching(sensors, clutch);
-			// Costruire una variabile CarControl e restituirla
-			Action action = new Action();
-			action.gear = gear;
-			action.steering = steer;
-			action.accelerate = 1.0;
-			action.brake = 0;
-			action.clutch = clutch;
-			return action;
-		}
+          /*  if (lettura) {*/
+                try (BufferedWriter bw = new BufferedWriter(new FileWriter(file, true))) {
+					bw.write("Speed;DistanzaLineaCentrale;SensoreSX1;SensoreSX2;SensoreCentrale;SensoreDX1;SensoreDX2;Angolo;Classe\n");//scrivo la prima riga del file
+                    for (double f : features) bw.append(f + ";");
+                    bw.append(classe + "\n");
+                } catch (IOException e) {
+                    System.err.println("Errore nel salvataggio del CSV");
+                }
+            //}
+        }
 
-		else //Auto non Bloccata
-		{
-			// Calcolo del comando di accelerazione/frenata
-			float accel_and_brake = getAccel(sensors);
+		handlerClass(sensors);
+        if (classe == 8 || classe == 12 || classe == 13) {
+            action.gear = -1;
+        } else {
+            action.gear = getGear(sensors);
+        }
+        action.brake = filterABS(sensors,(float) action.brake);
+        return action;
 
-			// Calcolare marcia da utilizzare
-			int gear = getGear(sensors);
-
-			// Calcolo angolo di sterzata
-			float steer = getSteer(sensors);
-
-			// Normalizzare lo sterzo
-			if (steer < -1)
-				steer = -1;
-			if (steer > 1)
-				steer = 1;
-
-			// Impostare accelerazione e frenata dal comando congiunto accelerazione/freno
-			float accel, brake;
-			if (accel_and_brake > 0) {
-				accel = accel_and_brake;
-				brake = 0;
-			} else {
-				accel = 0;
-
-				// Applicare l'ABS al freno
-				brake = filterABS(sensors, -accel_and_brake);
-			}
-			clutch = clutching(sensors, clutch);
-
-			// Costruire una variabile CarControl e restituirla
-			Action action = new Action();
-			action.gear = gear;
-			action.steering = steer;
-			action.accelerate = accel;
-			action.brake = brake;
-			action.clutch = clutch;
-			return action;
-		}
 	}
+
+	/*Metodo gestisce l'azione che deve compiere l'auto*/
+	private void handlerClass(SensorModel sensors) {
+        switch (classe) {
+            case 0: accelera(sensors); break;
+            case 1: gira(getSteer(sensors), getAccel(sensors), 1); break;
+            case 2: gira(getSteer(sensors), getAccel(sensors), 0); break;
+            case 3: gira(getSteer(sensors), getAccel(sensors), 0); break;
+            case 4: gira(getSteer(sensors), getAccel(sensors), 1); break;
+            case 5: gira(getSteer(sensors), getAccel(sensors), 0); break;
+            case 6: gira(getSteer(sensors), getAccel(sensors), 0); break;
+            case 7: frena(); break;
+            case 8: retromarcia(); break;
+            case 9: decelera(); break;
+            case 10: gira(getSteer(sensors), getAccel(sensors), 0); break; // avanti + sinistra
+            case 11: gira(getSteer(sensors), getAccel(sensors), 0); break;  // avanti + destra
+            case 12: action.gear = -1; gira(getSteer(sensors), getAccel(sensors), 0); break; // curva sinistra retro
+            case 13: action.gear = -1; gira(getSteer(sensors), getAccel(sensors), 0); break;  // curva destra retro
+        }
+    }
+
+	private void accelera(SensorModel sensors) {
+        if (action.gear == -1) action.gear = 1;
+        action.steering = 0;
+        action.brake = 0;
+        action.accelerate = getAccel(sensors);
+    }
+
+    private void gira(double sterzo, float accel, double freno) {
+        action.steering = sterzo;
+        action.accelerate = accel;
+        action.brake = freno;
+    }
+
+    private void frena() {
+        action.steering = 0;
+        action.accelerate = 0;
+        action.brake = 1;
+    }
+
+    private void retromarcia() {
+        action.gear = -1;
+        action.accelerate = 0.15;
+        action.brake = 0;
+        action.steering = (float) (-angolo / 0.785398);
+    }
+
+    private void decelera() {
+        if (action.gear == -1) action.gear = 1;
+        action.accelerate = 0;
+        action.brake = 0;
+        action.steering = 0;
+    }
+
 
 	private float filterABS(SensorModel sensors, float brake) {
 		// Converte la velocità in m/s
@@ -293,6 +364,11 @@ public class SimpleDriver extends Controller {
 		return clutch;
 	}
 
+
+
+
+
+	@Override
 	public float[] initAngles() {
 
 		float[] angles = new float[19];

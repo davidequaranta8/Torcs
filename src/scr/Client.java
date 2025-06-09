@@ -22,6 +22,8 @@ public class Client {
 	private static Stage stage;
 	private static String trackName;
 
+
+	private static boolean guidaAutonoma;//variabile per gestire addestramento/esecuzione
 	/**
 	 * @param args viene utilizzato per definire tutte le opzioni del client.
 	 *             - port:N viene utilizzato per specificare la porta per la connessione (il valore predefinito è 3001).
@@ -178,13 +180,16 @@ public class Client {
 					System.exit(0);
 				}
 			}
+			if (entity.equals("guidaAutonoma")) {//assegno il valore di guidaAutonoma passato da riga di comando
+                guidaAutonoma = Boolean.parseBoolean(value);
+            }
 		}
 	}
 
 	private static Controller load(String name) {
 		Controller controller = null;
 		try {
-			controller = (Controller) (Object) Class.forName(name).newInstance();
+			controller = (Controller) (Object) Class.forName(name).newInstance();//???????????????
 		} catch (ClassNotFoundException e) {
 			System.out.println(name + " is not a class name");
 			System.exit(0);

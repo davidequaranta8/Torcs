@@ -1,3 +1,5 @@
+package scr;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.KeyAdapter;
@@ -5,6 +7,7 @@ import java.awt.event.KeyEvent;
 
 public class ContinuousCharReaderUI extends JFrame {
     private JTextField inputField;
+
 
     public ContinuousCharReaderUI() {
         // Set up the frame
@@ -24,11 +27,14 @@ public class ContinuousCharReaderUI extends JFrame {
                 char ch = e.getKeyChar();
                 System.out.println("You pressed: " + ch);
 
+                SimpleDriver.setCh(ch);
+                System.out.println("Tasto premuto: " + ch);
+
                 // Clear the text field
                 inputField.setText("");
 
-                // Exit if 'q' is pressed
-                if (ch == 'q') {
+                // Exit if 'p' is pressed
+                if (ch == 'p') {
                     System.exit(0);
                 }
             }
