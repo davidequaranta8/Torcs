@@ -251,31 +251,31 @@ public class SimpleDriver extends Controller {
 	/*Metodo gestisce l'azione che deve compiere l'auto*/
 	private void handlerClass(SensorModel sensors) {
         switch (classe) {
-            case 0: accelera(sensors); break;
-            case 1: gira(getSteer(sensors), getAccel(sensors), 1); break;
-            case 2: gira(getSteer(sensors), getAccel(sensors), 0); break;
-            case 3: gira(getSteer(sensors), getAccel(sensors), 0); break;
-            case 4: gira(getSteer(sensors), getAccel(sensors), 1); break;
-            case 5: gira(getSteer(sensors), getAccel(sensors), 0); break;
-            case 6: gira(getSteer(sensors), getAccel(sensors), 0); break;
+            case 0: accelera(); break;
+            case 1: gira(0.5, 0, 1); break;
+            case 2: gira(0.15,(double) 0.5, 0); break;
+            case 3: gira(0.1, 1, 0); break;
+            case 4: gira(-0.5, 0, 1); break;
+            case 5: gira(-0.15,(double) 0.5, 0); break;
+            case 6: gira(-0.1, 1, 0); break;
             case 7: frena(); break;
             case 8: retromarcia(); break;
             case 9: decelera(); break;
-            case 10: gira(getSteer(sensors), getAccel(sensors), 0); break; // avanti + sinistra
-            case 11: gira(getSteer(sensors), getAccel(sensors), 0); break;  // avanti + destra
-            case 12: action.gear = -1; gira(getSteer(sensors), getAccel(sensors), 0); break; // curva sinistra retro
-            case 13: action.gear = -1; gira(getSteer(sensors), getAccel(sensors), 0); break;  // curva destra retro
+            case 10: gira(-0.15, 1, 0); break; // avanti + sinistra
+            case 11: gira(0.15, 1, 0); break;  // avanti + destra
+            case 12: action.gear = -1; gira(0.5,(double) 0.3, 0); break; // curva sinistra retro
+            case 13: action.gear = -1; gira(-0.5,(double) 0.3, 0); break;  // curva destra retro
         }
     }
 
-	private void accelera(SensorModel sensors) {
+	private void accelera() {
         if (action.gear == -1) action.gear = 1;
         action.steering = 0;
         action.brake = 0;
-        action.accelerate = getAccel(sensors);
+        action.accelerate = 1;
     }
 
-    private void gira(double sterzo, float accel, double freno) {
+    private void gira(double sterzo, double accel, double freno) {
         action.steering = sterzo;
         action.accelerate = accel;
         action.brake = freno;
