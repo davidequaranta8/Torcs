@@ -67,16 +67,22 @@ public class SimpleDriver extends Controller {
         this.action = new Action();//VEDI SE ELIMINARE????????????????????
         this.guidaAutonoma = guidaAutonoma;//inizializzo guidaAutonoma
 
-        if (!guidaAutonoma) {//se mi trovo nella fase di addestramento creo il file che rappresenta il dataset
-            file = new File("dataset.csv");
-            try (BufferedWriter bw = new BufferedWriter(new FileWriter(file))) {
-                bw.write("Speed;DistanzaLineaCentrale;SensoreSX1;SensoreSX2;SensoreCentrale;SensoreDX1;SensoreDX2;Angolo;Classe\n");
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-			ContinuousCharReaderUI.main(null);//lancio la UI
+        if (!guidaAutonoma) { // se mi trovo nella fase di addestramento
+    file = new File("dataset.csv");
 
-        } else {//se sono nella fase di esecuzione istanzio il classificatore passandogli il dataset
+    // Verifica se il file esiste, in caso contrario scrive la riga di intestazione
+    boolean fileEsistente = file.exists();
+    try (BufferedWriter bw = new BufferedWriter(new FileWriter(file, true))) {
+        // Scrive l'intestazione solo se il file è nuovo
+        if (!fileEsistente) {
+            bw.write("Speed;DistanzaLineaCentrale;SensoreSX1;SensoreSX2;SensoreCentrale;SensoreDX1;SensoreDX2;Angolo;Classe\n");
+        }
+    } catch (IOException e) {
+        e.printStackTrace();
+    }
+
+    ContinuousCharReaderUI.main(null); // lancio la UI
+	} else {//se sono nella fase di esecuzione istanzio il classificatore passandogli il dataset
             nn = new NearestNeighbor("dataset.csv");
         }
     }
@@ -252,17 +258,17 @@ public class SimpleDriver extends Controller {
 	private void handlerClass(SensorModel sensors) {
         switch (classe) {
             case 0: accelera(); break;
-            case 1: gira(0.5, 0, 1); break;
-            case 2: gira(0.15,(double) 0.5, 0); break;
-            case 3: gira(0.1, 1, 0); break;
-            case 4: gira(-0.5, 0, 1); break;
-            case 5: gira(-0.15,(double) 0.5, 0); break;
+            case 1: gira(0.25, 0, 1); break; // quando sono vicino al bordo dx e sono ad una velocità alta
+            case 2: gira(0.15,(double) 0.3, 0); break; // quando sono abbastanza vicino al bordo dx
+            case 3: gira(0.1, 0.5, 0); break; //se non sono vicino al bordo dx sterzata molto leggera
+            case 4: gira(-0.25, 0, 1); break;
+            case 5: gira(-0.15,(double) 0.3, 0); break;
             case 6: gira(-0.1, 1, 0); break;
             case 7: frena(); break;
             case 8: retromarcia(); break;
             case 9: decelera(); break;
-            case 10: gira(-0.15, 1, 0); break; // avanti + sinistra
-            case 11: gira(0.15, 1, 0); break;  // avanti + destra
+            case 10: gira(-0.15, 0.7, 0); break; // avanti + sinistra
+            case 11: gira(0.15, 0.7, 0); break;  // avanti + destra
             case 12: action.gear = -1; gira(0.5,(double) 0.3, 0); break; // curva sinistra retro
             case 13: action.gear = -1; gira(-0.5,(double) 0.3, 0); break;  // curva destra retro
         }
@@ -272,7 +278,7 @@ public class SimpleDriver extends Controller {
         if (action.gear == -1) action.gear = 1;
         action.steering = 0;
         action.brake = 0;
-        action.accelerate = 1;
+        action.accelerate = 0.7;
     }
 
     private void gira(double sterzo, double accel, double freno) {
